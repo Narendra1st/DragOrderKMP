@@ -6,9 +6,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -117,7 +114,7 @@ fun DragOrderScreen(navController: NavController) {
             // RIGHT PANEL (ITEMS)
             Column(
                 Modifier
-                    .weight(0.5f)
+                    .weight(0.7f)
                     .background(Color.White, RoundedCornerShape(10.dp))
                     .padding(6.dp)
                     .onGloballyPositioned { coords ->
@@ -129,92 +126,73 @@ fun DragOrderScreen(navController: NavController) {
 
                 availableItems.chunked(2).forEach { rowItems ->
                     Row {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(availableItems) { item ->
+                        rowItems.forEach { item ->
 
-                                var offset by remember { mutableStateOf(Offset.Zero) }
-                                var itemGlobalOffset by remember { mutableStateOf(Offset.Zero) }
+                            var offset by remember { mutableStateOf(Offset.Zero) }
+                            var itemGlobalOffset by remember { mutableStateOf(Offset.Zero) }
 
-                                Box(
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .onGloballyPositioned { coords ->
-                                            itemGlobalOffset = coords.positionInWindow()
-                                        }
-                                        .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
-                                        .background(
-                                            MaterialTheme.colorScheme.primaryContainer,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .border(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outline,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .pointerInput(item) {
-                                            awaitEachGesture {
-                                                val down = awaitFirstDown()
-                                                offset = Offset.Zero
-                                                val pointer = down.id
-                                                var hasDragged = false
-
-                                                while (true) {
-                                                    val event = awaitPointerEvent()
-                                                    val change =
-                                                        event.changes.firstOrNull { it.id == pointer } ?: break
-
-                                                    if (change.pressed) {
-                                                        val delta = change.positionChange()
-                                                        if (delta != Offset.Zero) hasDragged = true
-                                                        offset += delta
-                                                        if (delta != Offset.Zero) change.consume()
-                                                    } else break
-                                                }
-
-                                                val dropX = itemGlobalOffset.x + down.position.x + offset.x
-                                                val dropY = itemGlobalOffset.y + down.position.y + offset.y
-
-                                                if (hasDragged) {
-                                                    var matchedId: String? = null
-                                                    vm.orderDropAreas.forEach { (id, rect) ->
-                                                        if (dropX in rect.left..rect.right &&
-                                                            dropY in rect.top..rect.bottom
-                                                        ) {
-                                                            matchedId = id
-                                                        }
-                                                    }
-
-                                                    if (matchedId != null) {
-                                                        vm.addItemTo(matchedId!!, item)
-                                                    } else {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Item not dropped on seat",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                }
-                                                offset = Offset.Zero
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(text = item.imageUrl, fontSize = 32.sp)
-                                        Text(item.name)
-                                        Text("₹${item.price}")
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .padding(6.dp)
+                                    .onGloballyPositioned { coords ->
+                                        itemGlobalOffset = coords.positionInWindow()
                                     }
+                                    .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
+                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
+                                    .pointerInput(item) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown()
+                                            offset = Offset.Zero
+                                            val pointer = down.id
+                                            var hasDragged = false
+
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val change = event.changes.firstOrNull { it.id == pointer } ?: break
+
+                                                if (change.pressed) {
+                                                    val delta = change.positionChange()
+                                                    if (delta != Offset.Zero) hasDragged = true
+                                                    offset += delta
+                                                    if (delta != Offset.Zero) change.consume()
+                                                } else break
+                                            }
+
+                                            val dropX = itemGlobalOffset.x + down.position.x + offset.x
+                                            val dropY = itemGlobalOffset.y + down.position.y + offset.y
+
+                                            if (hasDragged) {
+                                                var matchedId: String? = null
+                                                vm.orderDropAreas.forEach { (id, rect) ->
+                                                    if (dropX in rect.left..rect.right && dropY in rect.top..rect.bottom) {
+                                                        matchedId = id
+                                                    }
+                                                }
+
+                                                if (matchedId != null) {
+                                                    vm.addItemTo(matchedId!!, item)
+                                                } else {
+                                                    Toast.makeText(context, "Item not dropped on seat", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                            offset = Offset.Zero
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = item.imageUrl,   // yahan emoji ya icon string hoga
+                                        fontSize = 32.sp,
+                                        modifier = Modifier.size(45.dp)
+                                    )
+                                    Text(item.name)
+                                    Text("₹${item.price}")
                                 }
                             }
                         }
-
                     }
                 }
             }

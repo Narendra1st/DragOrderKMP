@@ -39,7 +39,12 @@ class OrderViewModel(private val context: Context) : ViewModel() {
     var showPopup by mutableStateOf(false)
     var name by mutableStateOf("")
     var error by mutableStateOf("")
-
+    init {
+        val saved = OrderStorage.load(context)
+        if (saved.isNotEmpty()) {
+            orders.addAll(saved)
+        }
+    }
     // Helpers
     fun countInTable(table: String?): Int {
         if (table == null) return 0
@@ -69,7 +74,7 @@ class OrderViewModel(private val context: Context) : ViewModel() {
                 total = 0
             )
         )
-
+        OrderStorage.save(context, orders)   // 👈 save
         name = ""
         showPopup = false
     }
