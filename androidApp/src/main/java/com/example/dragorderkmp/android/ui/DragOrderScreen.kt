@@ -14,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.consumePositionChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -22,13 +21,13 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.dragorderkmp.OrderItem
 import com.example.dragorderkmp.android.viewmodel.OrderViewModel
-import coil.compose.AsyncImage
 
 
 @Composable
@@ -44,52 +43,83 @@ fun DragOrderScreen(navController: NavController) {
     )
 
     val availableItems = listOf(
-        OrderItem("Pizza",120,"https://pngimg.com/uploads/pizza/pizza_PNG44077.png"),
-        OrderItem("Burger",80,"https://pngimg.com/uploads/burger_sandwich/burger_sandwich_PNG4135.png"),
-        OrderItem("Samosa",20,"https://i.pinimg.com/736x/8c/d2/4f/8cd24f5121c62e3241dd66d5c52aa476.jpg"),
-        OrderItem("Cake",100,"https://pngimg.com/uploads/cake/cake_PNG9692.png"),
-        OrderItem("Tea",80,"https://pngimg.com/uploads/tea/tea_PNG16957.png"),
-        OrderItem("Coffee",80,"https://pngimg.com/uploads/coffee/coffee_PNG17374.png"),
-        OrderItem("Milkshake",80,"https://pngimg.com/uploads/milkshake/milkshake_PNG70.png"),
-        OrderItem("Ice Cream",80,"https://pngimg.com/uploads/ice_cream/ice_cream_PNG20992.png"),
-        OrderItem("Donut",80,"https://pngimg.com/uploads/donut/donut_PNG52.png"),
-        OrderItem("Burrito",80,"https://pngimg.com/uploads/burrito/burrito_PNG35.png"),
-        OrderItem("Taco",80,"https://pngimg.com/uploads/taco/taco_PNG28.png"),
-        OrderItem("Chicken Nuggets",80,"https://pngimg.com/uploads/nuggets/nuggets_PNG43.png"),
-        OrderItem("Sandwich",80,"https://pngimg.com/uploads/sandwich/sandwich_PNG59.png"),
-        OrderItem("Hot Dog",80,"https://pngimg.com/uploads/hot_dog/hot_dog_PNG27.png"),
+        OrderItem("Pizza",120,"🍕"),
+        OrderItem("Burger",80,"🍔"),
+        OrderItem("Samosa",20,"🥟"),
+        OrderItem("Cake",100,"🍰"),
+        OrderItem("Tea",80,"🍵"),
+        OrderItem("Coffee",80,"☕"),
+        OrderItem("Milkshake",80,"🥤"),
+        OrderItem("Ice Cream",80,"🍨"),
+        OrderItem("Donut",80,"🍩"),
+        OrderItem("Burrito",80,"🌯"),
+        OrderItem("Taco",80,"🌮"),
+        OrderItem("Chicken Nuggets",80,"🍗"),
+        OrderItem("Sandwich",80,"🥪"),
+        OrderItem("Hot Dog",80,"🌭"),
+        OrderItem("Item15",150,"⭐")   // new item
     )
 
+
     var rightPanelOffset by remember { mutableStateOf(Offset.Zero) }
-    Box(Modifier.fillMaxSize().background(Color(0xFFEFEFEF))) {
+
+    Box(Modifier.fillMaxSize().background(Color(0xFF8D7070))) {
 
         Row(Modifier.fillMaxSize().padding(12.dp)) {
 
             // LEFT PANEL
-            Column(Modifier.weight(1f).padding(start = 6.dp, end = 6.dp)) {
-                OrderList(vm, navController)   // nav pass
+            Column(
+                Modifier
+                    .weight(1f)
+                    .background(Color(0xFFBD5A5A))
+                    .padding(6.dp)
+            ) {
+
+                // Step 1: Table Select
+                Row {
+                    listOf("RT-01","RT-02","RT-03","RT-04").forEach { table ->
+                        Button(
+                            onClick = { vm.selectTable(table) },
+                            colors = ButtonDefaults.buttonColors(
+                                if (vm.selectedTable == table)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondary
+                            ),
+                            modifier = Modifier.padding(4.dp)
+                        ) {
+                            Text(table)
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(8.dp))
-//                BillSection(vm)
+
+                // Step 2: Selected Table ka Common Layout
+                val persons = vm.orders.filter { it.tableNo == vm.selectedTable }
+
+                CommonTable4Persons(persons) { id, rect ->
+                    vm.orderDropAreas[id] = rect
+                }
             }
 
             Spacer(
                 Modifier
-                    .fillMaxHeight()     // poori height lega
-                    .width(1.dp)         // line ki thickness
+                    .fillMaxHeight()
+                    .width(1.dp)
                     .background(Color(0xFF383734))
             )
 
             // RIGHT PANEL (ITEMS)
             Column(
                 Modifier
-                    .weight(1.5f)
-                    .padding(start = 6.dp, end = 6.dp)
+                    .weight(0.5f)
+                    .padding(6.dp)
                     .onGloballyPositioned { coords ->
-                        val pos = coords.positionInWindow()
-                        rightPanelOffset = Offset(pos.x, pos.y)
+                        rightPanelOffset = coords.positionInWindow()
                     }
             ) {
-                Text("Items", style = MaterialTheme.typography.titleMedium)
+                Text("Items",style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
 
                 availableItems.chunked(2).forEach { rowItems ->
@@ -106,18 +136,9 @@ fun DragOrderScreen(navController: NavController) {
                                     .onGloballyPositioned { coords ->
                                         itemGlobalOffset = coords.positionInWindow()
                                     }
-                                    .offset {
-                                        IntOffset(offset.x.toInt(), offset.y.toInt())
-                                    }
-                                    .background(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        RoundedCornerShape(10.dp)
-                                    )
+                                    .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
+                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
                                     .pointerInput(item) {
                                         awaitEachGesture {
                                             val down = awaitFirstDown()
@@ -127,59 +148,42 @@ fun DragOrderScreen(navController: NavController) {
 
                                             while (true) {
                                                 val event = awaitPointerEvent()
-                                                val change =
-                                                    event.changes.firstOrNull { it.id == pointer }
-                                                        ?: break
+                                                val change = event.changes.firstOrNull { it.id == pointer } ?: break
 
                                                 if (change.pressed) {
                                                     val delta = change.positionChange()
                                                     if (delta != Offset.Zero) hasDragged = true
                                                     offset += delta
-                                                    change.consumePositionChange()
+                                                    if (delta != Offset.Zero) change.consume()
                                                 } else break
                                             }
 
-                                            val dropX =
-                                                itemGlobalOffset.x + down.position.x + offset.x
-                                            val dropY =
-                                                itemGlobalOffset.y + down.position.y + offset.y
+                                            val dropX = itemGlobalOffset.x + down.position.x + offset.x
+                                            val dropY = itemGlobalOffset.y + down.position.y + offset.y
 
                                             if (hasDragged) {
-                                                // try matching against any known order drop areas
-                                                var matchedOrderId: String? = null
+                                                var matchedId: String? = null
                                                 vm.orderDropAreas.forEach { (id, rect) ->
-                                                    if (dropX >= rect.left && dropX <= rect.right && dropY >= rect.top && dropY <= rect.bottom) {
-                                                        matchedOrderId = id
+                                                    if (dropX in rect.left..rect.right && dropY in rect.top..rect.bottom) {
+                                                        matchedId = id
                                                     }
                                                 }
 
-                                                if (matchedOrderId != null) {
-                                                    vm.addItemTo(matchedOrderId!!, item)
+                                                if (matchedId != null) {
+                                                    vm.addItemTo(matchedId!!, item)
                                                 } else {
-                                                    // Build debug message: drop coords + known rects
-                                                    val sb = StringBuilder()
-                                                    sb.append("drop=(%.1f,%.1f) ".format(dropX, dropY))
-                                                    sb.append("orders:")
-                                                    vm.orderDropAreas.forEach { (id, rect) ->
-                                                        sb.append(" $id=[%.0f,%.0f,%.0f,%.0f]".format(rect.left, rect.top, rect.right, rect.bottom))
-                                                    }
-                                                    val msg = sb.toString()
-                                                    Toast.makeText(context, "item not added to cart: $msg", Toast.LENGTH_LONG).apply {
-                                                        setGravity(Gravity.CENTER, 0, -200)
-                                                        show()
-                                                    }
+                                                    Toast.makeText(context, "Item not dropped on seat", Toast.LENGTH_SHORT).show()
                                                 }
                                             }
-
                                             offset = Offset.Zero
                                         }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    AsyncImage(
-                                        model = item.imageUrl,
-                                        contentDescription = item.name,
+                                    Text(
+                                        text = item.imageUrl,   // yahan emoji ya icon string hoga
+                                        fontSize = 32.sp,
                                         modifier = Modifier.size(45.dp)
                                     )
                                     Text(item.name)
@@ -192,19 +196,23 @@ fun DragOrderScreen(navController: NavController) {
             }
         }
 
-        // Popup
+        // Step 3: Popup
         if (vm.showPopup) {
             CreateOrderPopup(vm)
         }
 
-        // Floating Add Button
+        // “+” Button
         FloatingActionButton(
-            onClick = { vm.showPopup = true },
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
+            onClick = {
+                if (vm.selectedTable != null) {
+                    vm.showPopup = true
+                } else {
+                    Toast.makeText(context, "Select Table First", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Order")
+            Icon(Icons.Default.Add, contentDescription = "Add Seat")
         }
     }
 }

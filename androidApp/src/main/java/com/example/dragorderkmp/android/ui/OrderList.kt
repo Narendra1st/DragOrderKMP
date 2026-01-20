@@ -1,7 +1,6 @@
 package com.example.dragorderkmp.android.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,9 +40,7 @@ fun OrderList(vm: OrderViewModel, navController: NavController) {
                             )
 
                             // update map of orderId -> rect so drops can be detected without explicit selection
-                            val newMap = vm.orderDropAreas.toMutableMap()
-                            newMap[order.id] = rect
-                            vm.orderDropAreas = newMap
+                            vm.orderDropAreas[order.id] = rect
                             // if this is the selected order, also set selectedDropArea for compatibility
                             if (vm.selectedOrderId == order.id) {
                                 vm.selectedDropArea = rect

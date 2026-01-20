@@ -11,16 +11,14 @@ import com.example.dragorderkmp.android.viewmodel.OrderViewModel
 
 @Composable
 fun BillSection(vm: OrderViewModel) {
-    val order = vm.selectedOrder() ?: return
+    val table = vm.selectedTable ?: return
+    val order = vm.orders.firstOrNull { it.tableNo == table } ?: return
 
     Column(Modifier.padding(8.dp)) {
         Text("Current Person", style = MaterialTheme.typography.titleMedium)
         Text("ID: ${order.id}")
         Text("Name: ${order.name}")
         Text("Table: ${order.tableNo}")
-        Text(
-            "Qty: ${order.qty}",
-            color = MaterialTheme.colorScheme.primary
-        )
+        Text("Qty: ${order.qty}", color = MaterialTheme.colorScheme.primary)
     }
 }

@@ -4,7 +4,7 @@ data class Order(
     val id: String,
     val name: String,
     val tableNo: String,
-    val items: MutableList<OrderItem>,
+    val items: List<OrderItem> = emptyList(),
     val qty: Int = 0,
     val total: Int = 0
 )
