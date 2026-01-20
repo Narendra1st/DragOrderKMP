@@ -5,7 +5,9 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
@@ -19,7 +21,7 @@ fun CommonTable4Persons(
     persons: List<Order>,
     onPosition: (String, Rect) -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
 
         Row {
             PersonCard(persons.getOrNull(0), onPosition, Modifier.weight(0.1f))
