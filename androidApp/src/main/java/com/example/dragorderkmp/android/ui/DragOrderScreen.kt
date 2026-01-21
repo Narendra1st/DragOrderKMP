@@ -62,7 +62,6 @@ fun DragOrderScreen(navController: NavController) {
         OrderItem("Chicken Nuggets",80,"🍗"),
         OrderItem("Sandwich",80,"🥪"),
         OrderItem("Hot Dog",80,"🌭"),
-        OrderItem("Item15",150,"⭐")
     )
 
     var rightPanelOffset by remember { mutableStateOf(Offset.Zero) }
@@ -71,7 +70,7 @@ fun DragOrderScreen(navController: NavController) {
     var dragStartPos by remember { mutableStateOf(Offset.Zero) }
     var dragItemGlobalPos by remember { mutableStateOf(Offset.Zero) }
 
-    Box(Modifier.fillMaxSize().background(Color(0xFF8D7070))) {
+    Box(Modifier.fillMaxSize().background(Color(0xFF03A9F4))) {
 
         Row(Modifier.fillMaxSize().padding(12.dp)) {
 
@@ -80,7 +79,7 @@ fun DragOrderScreen(navController: NavController) {
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(Color(0xFFBD5A5A), RoundedCornerShape(10.dp))
+                    .background(Color(0xFF8F989B), RoundedCornerShape(10.dp))
                     .padding(6.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -110,11 +109,14 @@ fun DragOrderScreen(navController: NavController) {
                 // Step 2: Selected Table ka Common Layout
                 val persons = vm.orders.filter { it.tableNo == vm.selectedTable }
 
-                CommonTable4Persons(persons) { id, rect ->
+                CommonTable4Persons(
+                    persons,
+                    modifier = Modifier.weight(1f)
+                ) { id, rect ->
                     vm.orderDropAreas[id] = rect
                 }
                 val grandTotal =
-                    persons.filter { vm.selectedTable == it.tableNo }.sumOf { it.total }
+                    persons.sumOf { it.total }
                 Text("Total: ₹$grandTotal", style = MaterialTheme.typography.bodyMedium)
             }
 
@@ -155,7 +157,7 @@ fun DragOrderScreen(navController: NavController) {
                                     modifier = Modifier
                                         .weight(1f)
                                         .aspectRatio(1f)
-                                        .padding(6.dp)
+                                        .padding(8.dp)
                                         .onGloballyPositioned { coords ->
                                             itemGlobalOffset = coords.positionInWindow()
                                         }
@@ -236,11 +238,11 @@ fun DragOrderScreen(navController: NavController) {
                                     ) {
                                         Text(
                                             text = item.imageUrl,
-                                            fontSize = 28.sp,
-                                            modifier = Modifier.size(40.dp)
+                                            fontSize = 90.sp,
+                                            modifier = Modifier.size(140.dp)
                                         )
-                                        Text(item.name, fontSize = 10.sp)
-                                        Text("₹${item.price}", fontSize = 9.sp)
+                                        Text(item.name, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                        Text("₹${item.price}", fontSize = 20.sp)
                                     }
                                 }
                             }

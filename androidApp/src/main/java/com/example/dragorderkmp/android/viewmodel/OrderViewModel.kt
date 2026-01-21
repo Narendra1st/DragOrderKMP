@@ -27,6 +27,8 @@ class OrderViewModel(val context: Context) : ViewModel() {
 
     fun selectTable(tableId: String) {
         selectedTable = tableId
+        // Clear old drop areas when switching tables
+        orderDropAreas.clear()
     }
 
     // Drag-drop areas
@@ -64,21 +66,28 @@ class OrderViewModel(val context: Context) : ViewModel() {
             return
         }
 
+        // Name is required
+        if (name.trim().isEmpty()) {
+            error = "Please enter a seat name"
+            return
+        }
+
         val seatNo = count + 1
-        val seatName = if (name.isBlank()) "Seat-$seatNo" else name
 
         orders.add(
             Order(
                 id = "$table-S$seatNo",
-                name = seatName,
+                name = name.trim(),
                 tableNo = table,
                 items = emptyList(),
                 qty = 0,
                 total = 0
             )
         )
-        OrderStorage.save(context, orders)   // 👈 save
+        OrderStorage.save(context, orders)
+        // Clear state after creation
         name = ""
+        error = ""
         showPopup = false
     }
     fun removeOrder(id: String) {
