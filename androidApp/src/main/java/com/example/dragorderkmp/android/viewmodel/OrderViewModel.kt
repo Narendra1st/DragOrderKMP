@@ -14,7 +14,7 @@ import com.example.dragorderkmp.OrderItem
 import com.example.dragorderkmp.android.storage.OrderStorage
 import androidx.compose.ui.geometry.Rect
 
-class OrderViewModel(private val context: Context) : ViewModel() {
+class OrderViewModel(val context: Context) : ViewModel() {
 
     // Selection
     var selectedOrderId by mutableStateOf<String?>(null)
@@ -36,6 +36,8 @@ class OrderViewModel(private val context: Context) : ViewModel() {
     var orders = mutableStateListOf<Order>()
 
     // UI State
+    var showPayPopup by mutableStateOf(false)
+
     var showPopup by mutableStateOf(false)
     var name by mutableStateOf("")
     var error by mutableStateOf("")
@@ -44,6 +46,7 @@ class OrderViewModel(private val context: Context) : ViewModel() {
         if (saved.isNotEmpty()) {
             orders.addAll(saved)
         }
+        selectTable("RT-01")
     }
     // Helpers
     fun countInTable(table: String?): Int {
@@ -95,12 +98,23 @@ class OrderViewModel(private val context: Context) : ViewModel() {
 
         val old = orders[index]
         val newItems = old.items.toMutableList()
-        newItems.add(item)
+        
+        // Check if item already exists in order
+        val existingItemIndex = newItems.indexOfFirst { it.name == item.name }
+        
+        if (existingItemIndex != -1) {
+            // Item exists, increment qty
+            val existingItem = newItems[existingItemIndex]
+            newItems[existingItemIndex] = existingItem.copy(qty = existingItem.qty + 1)
+        } else {
+            // New item, add with qty = 1
+            newItems.add(item.copy(qty = 1))
+        }
 
         orders[index] = old.copy(
             items = newItems,
-            qty = newItems.size,
-            total = newItems.sumOf { it.price }
+            qty = newItems.sumOf { it.qty },
+            total = newItems.sumOf { it.price * it.qty }
         )
     }
 }

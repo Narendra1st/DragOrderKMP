@@ -12,13 +12,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,7 +30,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.dragorderkmp.OrderItem
+import com.example.dragorderkmp.android.storage.OrderStorage
 import com.example.dragorderkmp.android.viewmodel.OrderViewModel
+import com.example.dragorderkmp.android.payment.PayPopup
 
 
 @Composable
@@ -57,11 +62,14 @@ fun DragOrderScreen(navController: NavController) {
         OrderItem("Chicken Nuggets",80,"🍗"),
         OrderItem("Sandwich",80,"🥪"),
         OrderItem("Hot Dog",80,"🌭"),
-        OrderItem("Item15",150,"⭐")   // new item
+        OrderItem("Item15",150,"⭐")
     )
 
-
     var rightPanelOffset by remember { mutableStateOf(Offset.Zero) }
+    var draggedItem by remember { mutableStateOf<OrderItem?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var dragStartPos by remember { mutableStateOf(Offset.Zero) }
+    var dragItemGlobalPos by remember { mutableStateOf(Offset.Zero) }
 
     Box(Modifier.fillMaxSize().background(Color(0xFF8D7070))) {
 
@@ -71,14 +79,14 @@ fun DragOrderScreen(navController: NavController) {
             Column(
                 Modifier
                     .weight(1f)
-//                    .background(Color.White, )
-                    .background(Color(0xFFBD5A5A),RoundedCornerShape(10.dp))
+                    .fillMaxHeight()
+                    .background(Color(0xFFBD5A5A), RoundedCornerShape(10.dp))
                     .padding(6.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-
                 // Step 1: Table Select
-                Row {
-                    listOf("RT-01","RT-02","RT-03","RT-04").forEach { table ->
+                Row(Modifier.fillMaxWidth()) {
+                    listOf("RT-01", "RT-02", "RT-03", "RT-04").forEach { table ->
                         Button(
                             onClick = { vm.selectTable(table) },
                             colors = ButtonDefaults.buttonColors(
@@ -87,9 +95,12 @@ fun DragOrderScreen(navController: NavController) {
                                 else
                                     MaterialTheme.colorScheme.secondary
                             ),
-                            modifier = Modifier.padding(4.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(4.dp),
+                            contentPadding = PaddingValues(4.dp)
                         ) {
-                            Text(table)
+                            Text(table, fontSize = 10.sp)
                         }
                     }
                 }
@@ -102,6 +113,9 @@ fun DragOrderScreen(navController: NavController) {
                 CommonTable4Persons(persons) { id, rect ->
                     vm.orderDropAreas[id] = rect
                 }
+                val grandTotal =
+                    persons.filter { vm.selectedTable == it.tableNo }.sumOf { it.total }
+                Text("Total: ₹$grandTotal", style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(
@@ -114,82 +128,120 @@ fun DragOrderScreen(navController: NavController) {
             // RIGHT PANEL (ITEMS)
             Column(
                 Modifier
-                    .weight(0.7f)
+                    .weight(1f)
+                    .fillMaxHeight()
                     .background(Color.White, RoundedCornerShape(10.dp))
-                    .padding(6.dp)
+                    .padding(8.dp)
                     .onGloballyPositioned { coords ->
                         rightPanelOffset = coords.positionInWindow()
                     }
             ) {
-                Text("Items",style = MaterialTheme.typography.titleMedium)
+                Text("Items", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
 
-                availableItems.chunked(2).forEach { rowItems ->
-                    Row {
-                        rowItems.forEach { item ->
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    availableItems.chunked(2).forEach { rowItems ->
+                        Row(Modifier.fillMaxWidth()) {
+                            rowItems.forEach { item ->
 
-                            var offset by remember { mutableStateOf(Offset.Zero) }
-                            var itemGlobalOffset by remember { mutableStateOf(Offset.Zero) }
+                                var itemGlobalOffset by remember { mutableStateOf(Offset.Zero) }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .padding(6.dp)
-                                    .onGloballyPositioned { coords ->
-                                        itemGlobalOffset = coords.positionInWindow()
-                                    }
-                                    .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
-                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
-                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
-                                    .pointerInput(item) {
-                                        awaitEachGesture {
-                                            val down = awaitFirstDown()
-                                            offset = Offset.Zero
-                                            val pointer = down.id
-                                            var hasDragged = false
-
-                                            while (true) {
-                                                val event = awaitPointerEvent()
-                                                val change = event.changes.firstOrNull { it.id == pointer } ?: break
-
-                                                if (change.pressed) {
-                                                    val delta = change.positionChange()
-                                                    if (delta != Offset.Zero) hasDragged = true
-                                                    offset += delta
-                                                    if (delta != Offset.Zero) change.consume()
-                                                } else break
-                                            }
-
-                                            val dropX = itemGlobalOffset.x + down.position.x + offset.x
-                                            val dropY = itemGlobalOffset.y + down.position.y + offset.y
-
-                                            if (hasDragged) {
-                                                var matchedId: String? = null
-                                                vm.orderDropAreas.forEach { (id, rect) ->
-                                                    if (dropX in rect.left..rect.right && dropY in rect.top..rect.bottom) {
-                                                        matchedId = id
-                                                    }
-                                                }
-
-                                                if (matchedId != null) {
-                                                    vm.addItemTo(matchedId!!, item)
-                                                } else {
-                                                    Toast.makeText(context, "Item not dropped on seat", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                            offset = Offset.Zero
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .padding(6.dp)
+                                        .onGloballyPositioned { coords ->
+                                            itemGlobalOffset = coords.positionInWindow()
                                         }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = item.imageUrl,   // yahan emoji ya icon string hoga
-                                        fontSize = 32.sp,
-                                        modifier = Modifier.size(45.dp)
-                                    )
-                                    Text(item.name)
-                                    Text("₹${item.price}")
+                                        .background(
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .pointerInput(item) {
+                                            awaitEachGesture {
+                                                val down = awaitFirstDown()
+                                                dragOffset = Offset.Zero
+                                                dragStartPos = down.position
+                                                dragItemGlobalPos = itemGlobalOffset
+                                                draggedItem = null
+                                                val pointer = down.id
+                                                var hasDragged = false
+
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    val change =
+                                                        event.changes.firstOrNull { it.id == pointer }
+                                                            ?: break
+
+                                                    if (change.pressed) {
+                                                        val delta = change.positionChange()
+                                                        if (delta != Offset.Zero) {
+                                                            hasDragged = true
+                                                            draggedItem = item
+                                                        }
+                                                        dragOffset += delta
+                                                        if (delta != Offset.Zero) change.consume()
+                                                    } else break
+                                                }
+
+                                                val dropX =
+                                                    itemGlobalOffset.x + down.position.x + dragOffset.x
+                                                val dropY =
+                                                    itemGlobalOffset.y + down.position.y + dragOffset.y
+
+                                                if (hasDragged) {
+                                                    var matchedId: String? = null
+                                                    vm.orderDropAreas.forEach { (id, rect) ->
+                                                        if (dropX in rect.left..rect.right && dropY in rect.top..rect.bottom) {
+                                                            matchedId = id
+                                                        }
+                                                    }
+
+                                                    if (matchedId != null) {
+                                                        vm.addItemTo(matchedId!!, item)
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Added to ${matchedId!!}",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    } else {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "No seat found at drop location. Available: ${vm.orderDropAreas.keys.joinToString()}",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
+                                                    OrderStorage.save(context, vm.orders)
+                                                }
+                                                dragOffset = Offset.Zero
+                                                draggedItem = null
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.alpha(if (draggedItem == item) 0.3f else 1f)
+                                    ) {
+                                        Text(
+                                            text = item.imageUrl,
+                                            fontSize = 28.sp,
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                        Text(item.name, fontSize = 10.sp)
+                                        Text("₹${item.price}", fontSize = 9.sp)
+                                    }
                                 }
                             }
                         }
@@ -203,8 +255,43 @@ fun DragOrderScreen(navController: NavController) {
             CreateOrderPopup(vm)
         }
 
-        // “+” Button
-        FloatingActionButton(
+        // Floating dragged item overlay
+        if (draggedItem != null) {
+            Box(
+                modifier = Modifier
+                    .offset {
+                        val floatX = dragItemGlobalPos.x + dragStartPos.x + dragOffset.x - 50
+                        val floatY = dragItemGlobalPos.y + dragStartPos.y + dragOffset.y - 50
+                        IntOffset(floatX.toInt(), floatY.toInt())
+                    }
+                    .size(100.dp)
+                    .graphicsLayer {
+                        shadowElevation = 16f
+                        scaleX = 1.1f
+                        scaleY = 1.1f
+                    }
+                    .zIndex(1000f)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        RoundedCornerShape(10.dp)
+                    )
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = draggedItem!!.imageUrl,
+                        fontSize = 32.sp,
+                        modifier = Modifier.size(45.dp)
+                    )
+                    Text(draggedItem!!.name)
+                    Text("₹${draggedItem!!.price}")
+                }
+            }
+        }
+
+        // Create Seat Button
+        Button(
             onClick = {
                 if (vm.selectedTable != null) {
                     vm.showPopup = true
@@ -212,9 +299,38 @@ fun DragOrderScreen(navController: NavController) {
                     Toast.makeText(context, "Select Table First", Toast.LENGTH_SHORT).show()
                 }
             },
-            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Seat")
+            Text("Create Seat")
+        }
+
+        // Payment Button
+        val grandTotal = vm.orders.filter { vm.selectedTable == it.tableNo }.sumOf { it.total }
+        Button(
+            onClick = {
+                if (grandTotal > 0) {
+                    vm.showPayPopup = true
+                } else {
+                    Toast.makeText(context, "Add items to table first", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Text("Pay ₹$grandTotal")
+        }
+
+        // Step 3: Popup
+        if (vm.showPopup) {
+            CreateOrderPopup(vm)
+        }
+
+        // Payment Popup
+        if (vm.showPayPopup) {
+            PayPopup(vm, grandTotal)
         }
     }
 }
